@@ -1,0 +1,53 @@
+version: "3.9"
+
+# ── MARS Docker Compose ────────────────────────────────────────────────────────
+# Foundation phase: only the backend service is defined.
+# Frontend is run separately via `npm run dev` during development.
+# Additional services (ChromaDB, etc.) will be added in later phases.
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: mars-backend:latest
+    container_name: mars-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=development
+      - HOST=0.0.0.0
+      - PORT=8000
+      - LOG_LEVEL=info
+      - RELOAD=false
+      - ALLOWED_ORIGINS=http://localhost:3000
+      - DATABASE_URL=sqlite:////data/mars.db
+      - LEDGER_DB_PATH=/data/mars_ledger.db
+    env_file:
+      - .env
+    volumes:
+      - mars-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  mars-data:
+    driver: local
+
+# ── Usage ─────────────────────────────────────────────────────────────────────
+# Build and start:
+#   docker-compose up --build
+#
+# Start existing image:
+#   docker-compose up
+#
+# Check health:
+#   curl http://localhost:8000/health
+#
+# Stop:
+#   docker-compose down
