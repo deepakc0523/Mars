@@ -138,6 +138,13 @@ class StateManager:
                 completed_actions.append(payload)
                 updates["context"] = {**self._state.context, "completed_actions": completed_actions}
 
+            # 12. ACTION_FAILED
+            elif event.event_type == EventType.ACTION_FAILED:
+                updates["active_action"] = None
+                failed_actions = list(self._state.context.get("failed_actions", []))
+                failed_actions.append(payload)
+                updates["context"] = {**self._state.context, "failed_actions": failed_actions}
+
             self._state = self._state.model_copy(update=updates)
             log.info("StateManager: applied event=%s -> phase=%s", event.event_type, self._state.phase)
             return self._state.model_copy()

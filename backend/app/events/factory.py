@@ -288,3 +288,28 @@ def make_action_completed_event(
         },
         correlation_id=correlation_id,
     )
+
+
+def make_action_failed_event(
+    action_id: UUID | str,
+    tool_name: str,
+    error_message: str,
+    *,
+    plan_id: UUID | str | None = None,
+    step_id: UUID | str | None = None,
+    source: str = "executor",
+    correlation_id: UUID | None = None,
+) -> Event:
+    """Create an action-failed event."""
+    return Event(
+        event_type=EventType.ACTION_FAILED,
+        source=source,
+        payload={
+            "action_id": str(action_id),
+            "tool_name": tool_name,
+            "error_message": error_message,
+            "plan_id": str(plan_id) if plan_id else None,
+            "step_id": str(step_id) if step_id else None,
+        },
+        correlation_id=correlation_id,
+    )

@@ -44,6 +44,7 @@ class EventType(str, enum.Enum):
     ACTION_STARTED = "action_started"
     ACTION_CANCELLED = "action_cancelled"
     ACTION_COMPLETED = "action_completed"
+    ACTION_FAILED = "action_failed"
 
     # Lifecycle events (emitted by the agent loop itself)
     INTERRUPT = "interrupt"
@@ -245,6 +246,28 @@ class WorldState(BaseModel):
         description="Arbitrary key-value context for the current incident.",
     )
     timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+
+# ─── Execution Context ────────────────────────────────────────────────────────
+
+
+class ExecutionContext(BaseModel):
+    """Tracks state and progress of plan execution."""
+
+    incident_id: UUID | None = Field(default=None)
+    plan_id: UUID = Field(..., description="ID of the plan being executed.")
+    current_step_id: UUID | None = Field(default=None)
+    completed_steps: list[str] = Field(default_factory=list)
+    failed_steps: list[str] = Field(default_factory=list)
+    pending_steps: list[str] = Field(default_factory=list)
+    active_action_id: UUID | None = Field(default=None)
+    status: str = Field(default="pending", description="'pending', 'running', 'completed', 'failed'")
+    started_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+    last_updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
 

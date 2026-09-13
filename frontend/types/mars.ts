@@ -22,6 +22,7 @@ export type EventType =
   | "action_started"
   | "action_cancelled"
   | "action_completed"
+  | "action_failed"
   | "interrupt"
   | "state_preserved"
   | "replan_started"
@@ -141,6 +142,32 @@ export interface WorldState {
   metrics: Record<string, number>;
   context: Record<string, unknown>;
   timestamp: string;
+}
+
+export interface ExecutionContext {
+  incident_id: string | null;
+  plan_id: string;
+  current_step_id: string | null;
+  completed_steps: string[];
+  failed_steps: string[];
+  pending_steps: string[];
+  active_action_id: string | null;
+  status: string;
+  started_at: string;
+  last_updated_at: string;
+}
+
+export interface ActionRecord {
+  id: string;
+  plan_id: string | null;
+  step_id: string | null;
+  tool_name: string;
+  input_payload: Record<string, unknown>;
+  output_payload: Record<string, unknown> | null;
+  status: string;
+  started_at: string;
+  completed_at: string | null;
+  error_message: string | null;
 }
 
 // ── API response envelopes ────────────────────────────────────────────────────
