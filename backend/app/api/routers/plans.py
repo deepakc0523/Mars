@@ -1,5 +1,5 @@
 """
-API router for plan creation, retrieval, and step mutations.
+API router for plan creation, generation, retrieval, and step mutations.
 """
 
 from typing import Any, Literal
@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
-from app.services import PlanService
+from app.services import PlanService, PlanningService
 
 router = APIRouter(prefix="/plans", tags=["plans"])
 
@@ -17,6 +17,10 @@ class CreatePlanRequest(BaseModel):
     incident_id: str = Field(..., description="Incident ID this plan is created for.")
     rationale: str = Field(default="", description="Reasoning for this plan.")
     steps: list[dict[str, Any]] = Field(default_factory=list, description="Ordered list of steps.")
+
+
+class GeneratePlanRequest(BaseModel):
+    incident_id: str = Field(..., description="Incident ID to generate a plan for.")
 
 
 class MutatePlanRequest(BaseModel):
@@ -51,6 +55,58 @@ async def create_plan(
         "status": plan.status,
         "rationale": plan.rationale,
         "steps_count": len(plan.steps),
+    }
+
+
+@router.post("/generate", status_code=200)
+async def generate_plan(
+    req: GeneratePlanRequest, db: Session = Depends(get_db)
+) -> dict[str, Any]:
+    """
+    Generate and verify a response plan for an incident through the Planner + Verifier state machine.
+    """
+    svc = PlanningService()
+    plan, verification_result, planning_state, attempts = (
+        await svc.generate_and_orchestrate_plan(req.incident_id, db=db)
+    )
+
+    plan_dict = None
+    if plan:
+        plan_svc = PlanService()
+        active_step = plan_svc.get_active_step(plan)
+        sorted_steps = sorted(plan.steps, key=lambda s: s.step_index)
+        plan_dict = {
+            "id": plan.id,
+            "incident_id": plan.incident_id,
+            "status": plan.status,
+            "rationale": plan.rationale,
+            "created_at": plan.created_at.isoformat(),
+            "active_step": {
+                "id": active_step.id,
+                "step_index": active_step.step_index,
+                "tool": active_step.tool,
+                "status": active_step.status,
+            } if active_step else None,
+            "steps": [
+                {
+                    "id": s.id,
+                    "step_index": s.step_index,
+                    "description": s.description,
+                    "tool": s.tool,
+                    "parameters": s.parameters_json,
+                    "expected_outcome": s.expected_outcome,
+                    "status": s.status,
+                }
+                for s in sorted_steps
+            ],
+        }
+
+    return {
+        "status": "approved" if planning_state.value == "approved" else "failed",
+        "planning_state": planning_state.value,
+        "attempts": attempts,
+        "plan": plan_dict,
+        "verification_result": verification_result.model_dump(mode="json") if verification_result else None,
     }
 
 

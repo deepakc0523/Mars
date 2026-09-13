@@ -11,7 +11,10 @@ from app.models.models import (
     PlanStatus,
     PlanStep,
     PlanStepStatus,
+    PlanningState,
+    ProposedPlan,
     Severity,
+    VerificationResult,
     WorldState,
 )
 
@@ -26,6 +29,9 @@ __all__ = [
     "PlanStatus",
     "PlanStep",
     "PlanStepStatus",
+    "PlanningState",
+    "ProposedPlan",
     "Severity",
+    "VerificationResult",
     "WorldState",
 ]

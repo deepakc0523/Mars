@@ -2,7 +2,6 @@
  * Canonical TypeScript types for MARS frontend.
  *
  * These mirror the Pydantic models in backend/app/models/models.py.
- * Keep these in sync when the backend models change.
  */
 
 // ── Enumerations ──────────────────────────────────────────────────────────────
@@ -10,9 +9,19 @@
 export type EventType =
   | "text_input"
   | "speech_input"
+  | "human_message"
+  | "human_interrupt"
   | "anomaly_detected"
   | "metric_update"
   | "alert"
+  | "log_event"
+  | "deployment_event"
+  | "recovery_event"
+  | "plan_created"
+  | "plan_updated"
+  | "action_started"
+  | "action_cancelled"
+  | "action_completed"
   | "interrupt"
   | "state_preserved"
   | "replan_started"
@@ -25,6 +34,13 @@ export type EventType =
   | "execution_completed"
   | "pipeline_error";
 
+export type IncidentStatus =
+  | "detected"
+  | "investigating"
+  | "interrupted"
+  | "replanning"
+  | "resolved";
+
 export type Severity = "low" | "medium" | "high" | "critical";
 
 export type PlanStatus =
@@ -34,6 +50,22 @@ export type PlanStatus =
   | "executing"
   | "completed"
   | "aborted";
+
+export type PlanStepStatus =
+  | "pending"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
+  | "failed";
+
+export type PlanningState =
+  | "idle"
+  | "planning"
+  | "verifying"
+  | "approved"
+  | "rejected"
+  | "replanning"
+  | "failed";
 
 export type AgentPhase =
   | "idle"
@@ -58,11 +90,13 @@ export interface MarsEvent {
 
 export interface PlanStep {
   step_id: string;
+  step_number?: string;
   description: string;
   tool: string;
   parameters: Record<string, unknown>;
   expected_outcome: string;
-  estimated_duration_seconds: number | null;
+  estimated_duration_seconds?: number | null;
+  status: PlanStepStatus;
 }
 
 export interface Plan {
@@ -75,17 +109,49 @@ export interface Plan {
   updated_at: string;
 }
 
+export interface ProposedPlan {
+  plan_id: string;
+  incident_id: string | null;
+  objective: string;
+  reason: string;
+  steps: PlanStep[];
+  restrictions_considered: string[];
+  planner_version: string;
+  created_at: string;
+}
+
+export interface VerificationResult {
+  approved: boolean;
+  risk_level: string;
+  issues: string[];
+  warnings: string[];
+  checked_restrictions: string[];
+  verifier_version: string;
+  timestamp: string;
+}
+
 export interface WorldState {
   snapshot_id: string;
   incident_id: string | null;
+  incident_status: IncidentStatus;
   phase: AgentPhase;
   active_plan_id: string | null;
+  active_action: Record<string, unknown> | null;
+  restrictions: string[];
   metrics: Record<string, number>;
   context: Record<string, unknown>;
   timestamp: string;
 }
 
 // ── API response envelopes ────────────────────────────────────────────────────
+
+export interface GeneratePlanResponse {
+  status: "approved" | "failed";
+  planning_state: PlanningState;
+  attempts: number;
+  plan: Plan | null;
+  verification_result: VerificationResult | null;
+}
 
 export interface HealthResponse {
   status: string;
@@ -104,14 +170,12 @@ export interface ErrorResponse {
 
 // ── WebSocket message envelopes ───────────────────────────────────────────────
 
-/**
- * All messages sent from the MARS backend over WebSocket are wrapped in this
- * envelope. The ``type`` field discriminates the message shape.
- */
 export interface WsMessage<T = unknown> {
   type: string;
-  payload: T;
-  timestamp: string;
+  event?: MarsEvent;
+  state?: WorldState;
+  payload?: T;
+  timestamp?: string;
 }
 
 export type WsEventMessage = WsMessage<MarsEvent>;
