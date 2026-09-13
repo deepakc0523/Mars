@@ -24,12 +24,26 @@ class EventType(str, enum.Enum):
 
     # External inputs
     TEXT_INPUT = "text_input"
-    SPEECH_INPUT = "speech_input"       # STT-converted; same pipeline as TEXT
+    SPEECH_INPUT = "speech_input"
+    HUMAN_MESSAGE = "human_message"
+    HUMAN_INTERRUPT = "human_interrupt"
 
     # System / monitoring events
     ANOMALY_DETECTED = "anomaly_detected"
     METRIC_UPDATE = "metric_update"
     ALERT = "alert"
+    LOG_EVENT = "log_event"
+    DEPLOYMENT_EVENT = "deployment_event"
+    RECOVERY_EVENT = "recovery_event"
+
+    # Plan events
+    PLAN_CREATED = "plan_created"
+    PLAN_UPDATED = "plan_updated"
+
+    # Action events
+    ACTION_STARTED = "action_started"
+    ACTION_CANCELLED = "action_cancelled"
+    ACTION_COMPLETED = "action_completed"
 
     # Lifecycle events (emitted by the agent loop itself)
     INTERRUPT = "interrupt"
@@ -45,6 +59,16 @@ class EventType(str, enum.Enum):
 
     # Errors
     PIPELINE_ERROR = "pipeline_error"
+
+
+class IncidentStatus(str, enum.Enum):
+    """Lifecycle status of an operational incident."""
+
+    DETECTED = "detected"
+    INVESTIGATING = "investigating"
+    INTERRUPTED = "interrupted"
+    REPLANNING = "replanning"
+    RESOLVED = "resolved"
 
 
 class Severity(str, enum.Enum):
@@ -67,6 +91,16 @@ class PlanStatus(str, enum.Enum):
     ABORTED = "aborted"
 
 
+class PlanStepStatus(str, enum.Enum):
+    """Status of an individual step in a plan."""
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    FAILED = "failed"
+
+
 class AgentPhase(str, enum.Enum):
     """Current phase of the MARS agent loop (IPRRV + Execute)."""
 
@@ -86,9 +120,6 @@ class AgentPhase(str, enum.Enum):
 class Event(BaseModel):
     """
     The single event type that flows through the MARS pipeline.
-
-    Both text and speech inputs produce an ``Event`` with the appropriate
-    ``event_type``. There is no separate code path for speech vs text.
     """
 
     id: UUID = Field(default_factory=uuid4, description="Unique event identifier.")
@@ -117,6 +148,7 @@ class PlanStep(BaseModel):
     """A single, atomic action within an agent plan."""
 
     step_id: UUID = Field(default_factory=uuid4)
+    step_number: str = Field(default="1", description="Display index/number (e.g. 'S1', 'S3.1').")
     description: str = Field(description="Human-readable description of the action.")
     tool: str = Field(description="Tool / function name to invoke.")
     parameters: dict[str, Any] = Field(default_factory=dict)
@@ -124,6 +156,7 @@ class PlanStep(BaseModel):
     estimated_duration_seconds: int | None = Field(
         default=None, description="Optional time budget for this step."
     )
+    status: PlanStepStatus = Field(default=PlanStepStatus.PENDING)
 
 
 class Plan(BaseModel):
@@ -148,15 +181,20 @@ class Plan(BaseModel):
 class WorldState(BaseModel):
     """
     A point-in-time snapshot of the system being monitored.
-
-    This is updated continuously and consulted on every INTERRUPT →
-    RE-EVALUATE cycle to decide whether the active plan is still valid.
     """
 
     snapshot_id: UUID = Field(default_factory=uuid4)
     incident_id: UUID | None = Field(default=None)
+    incident_status: IncidentStatus = Field(default=IncidentStatus.DETECTED)
     phase: AgentPhase = Field(default=AgentPhase.IDLE)
     active_plan_id: UUID | None = Field(default=None)
+    active_action: dict[str, Any] | None = Field(
+        default=None, description="Currently executing action payload if active."
+    )
+    restrictions: list[str] = Field(
+        default_factory=list,
+        description="Active constraints or prohibited tools/actions.",
+    )
     metrics: dict[str, float] = Field(
         default_factory=dict,
         description="Live metric readings keyed by metric name.",

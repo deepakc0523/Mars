@@ -45,7 +45,7 @@ class Settings(BaseSettings):
 
     # ── Database ──────────────────────────────────────────────────────────────
     database_url: str = Field(
-        default="sqlite:///./mars.db",
+        default="sqlite:///../data/mars.db",
         description="SQLAlchemy-compatible database URL.",
     )
 

@@ -6,9 +6,11 @@ from app.models.models import (
     Event,
     EventType,
     HealthResponse,
+    IncidentStatus,
     Plan,
     PlanStatus,
     PlanStep,
+    PlanStepStatus,
     Severity,
     WorldState,
 )
@@ -19,9 +21,11 @@ __all__ = [
     "Event",
     "EventType",
     "HealthResponse",
+    "IncidentStatus",
     "Plan",
     "PlanStatus",
     "PlanStep",
+    "PlanStepStatus",
     "Severity",
     "WorldState",
 ]

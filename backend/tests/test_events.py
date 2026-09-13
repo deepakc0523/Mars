@@ -29,7 +29,7 @@ class TestEventBus:
 
         bus.subscribe(handler)
         event = make_text_input_event("hello")
-        asyncio.get_event_loop().run_until_complete(bus.publish(event))
+        asyncio.run(bus.publish(event))
 
         assert len(received) == 1
         assert received[0].event_type == EventType.TEXT_INPUT
@@ -44,7 +44,7 @@ class TestEventBus:
         bus.subscribe(handler)
         bus.unsubscribe(handler)
         event = make_text_input_event("hello")
-        asyncio.get_event_loop().run_until_complete(bus.publish(event))
+        asyncio.run(bus.publish(event))
 
         assert len(received) == 0
 
@@ -67,7 +67,7 @@ class TestEventBus:
         bus.subscribe(bad_handler)
         event = make_text_input_event("test")
         # Should not raise.
-        asyncio.get_event_loop().run_until_complete(bus.publish(event))
+        asyncio.run(bus.publish(event))
 
 
 class TestEventFactories:

@@ -22,8 +22,9 @@ from fastapi.responses import JSONResponse
 from app.core.config import get_settings
 from app.core.exceptions import MARSError
 from app.core.logging import configure_logging
-from app.models import ErrorResponse
-from app.api.routers import health
+from app.api.routers import events, health, incidents, plans, state, websocket
+
+from app.db.database import init_db
 
 log = logging.getLogger(__name__)
 
@@ -38,6 +39,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         settings.app_env,
         settings.app_version,
     )
+    init_db()
+    log.info("Database initialized successfully.")
     yield
     log.info("MARS shutting down.")
 
@@ -93,6 +96,11 @@ def create_app() -> FastAPI:
 
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(health.router)
+    app.include_router(events.router)
+    app.include_router(incidents.router)
+    app.include_router(state.router)
+    app.include_router(plans.router)
+    app.include_router(websocket.router)
 
     log.info("MARS application created with %d route(s).", len(app.routes))
     return app

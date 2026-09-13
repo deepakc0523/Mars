@@ -15,7 +15,7 @@ from app.state import StateManager
 
 class TestStateManager:
     def _run(self, coro):  # type: ignore[no-untyped-def]
-        return asyncio.get_event_loop().run_until_complete(coro)
+        return asyncio.run(coro)
 
     def test_initial_phase_is_idle(self) -> None:
         sm = StateManager()
